@@ -1,6 +1,7 @@
 package org.kudos.intercepter;
 
 import com.github.benmanes.caffeine.cache.Cache;
+import com.sun.tools.corba.se.idl.constExpr.Or;
 import org.apache.ibatis.binding.MapperMethod;
 import org.apache.ibatis.cache.CacheKey;
 import org.apache.ibatis.executor.Executor;
@@ -27,7 +28,9 @@ import org.kudos.sharding.ShardingStrategy;
 import org.kudos.context.ShardingContextHolder;
 import org.kudos.utils.JsonUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.Ordered;
 import org.springframework.core.annotation.AnnotationUtils;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.util.ClassUtils;
 
@@ -43,26 +46,44 @@ import java.util.Properties;
  * @author suzl
  */
 @Component
+@Order(Ordered.HIGHEST_PRECEDENCE)
 @Intercepts({
         // SQL replacement
         @Signature(type = StatementHandler.class, method = "prepare", args = {Connection.class, Integer.class}),
         // sharding
         @Signature(type = Executor.class, method = "query", args = {MappedStatement.class, Object.class, RowBounds.class, ResultHandler.class, CacheKey.class, BoundSql.class}),
-        @Signature(type = Executor.class, method = "query", args = {MappedStatement.class, Object.class, RowBounds.class, ResultHandler.class}), @Signature(type = Executor.class, method = "update", args = {MappedStatement.class, Object.class})})
+        @Signature(type = Executor.class, method = "query", args = {MappedStatement.class, Object.class, RowBounds.class, ResultHandler.class}),
+        @Signature(type = Executor.class, method = "update", args = {MappedStatement.class, Object.class})})
 public class ShardingInterceptor implements Interceptor {
     @Autowired
     private RemoteConfigFetcher remoteConfigFetcher;
-    // table sharding config map
-    // key: datasource group, value: table sharding config(with sharding strategy, datasource total, table total)
+    /**
+     * table sharding config map key: datasource group, value: table sharding config(with sharding strategy, datasource
+     * total, table total)
+     */
     private Map<String, Map<String, TableShardingConfig>> tableShardingConfigMap;
+
+    /**
+     * db number and name mapping, cause the sharing result is a number, need the association of no and name mapping
+     */
+    private Map<String, Map<String, String>> dbNoMapping;
+
+    /**
+     * whether this mapper need to be sharded or not, carry from  Executor to StatementHandler layer
+     */
     private final ThreadLocal<Boolean> shardingFlagCtx = new ThreadLocal<>();
+    /**
+     * table name(with table number), carry from  Executor to StatementHandler layer
+     */
     private final ThreadLocal<Map<String, String>> tableNameMapCtx = new ThreadLocal<>();
 
     public ShardingInterceptor() {
     }
 
-    public ShardingInterceptor(Map<String, Map<String, TableShardingConfig>> tableShardingConfigMap) {
+    public ShardingInterceptor(final Map<String, Map<String, TableShardingConfig>> tableShardingConfigMap,
+                               final Map<String, Map<String, String>> dbNoMapping) {
         this.tableShardingConfigMap = tableShardingConfigMap;
+        this.dbNoMapping = dbNoMapping;
     }
 
 
