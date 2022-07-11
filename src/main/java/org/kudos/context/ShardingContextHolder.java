@@ -3,7 +3,7 @@ package org.kudos.context;
 import org.kudos.sharding.ShardingResult;
 
 /**
- * carry stuff by thread local.
+ * context holder by thread local.
  *
  * @author suzl
  */
@@ -13,9 +13,13 @@ public class ShardingContextHolder {
     }
 
     /**
-     * sharding result.
+     * DB name context.
      */
-    public static final ThreadLocal<ShardingResult> DB_CTX = new ThreadLocal<>();
+    public static final ThreadLocal<ShardingResult> SHARDING_RESULT_CTX = new ThreadLocal<>();
 
+    /**
+     * whether this mapper need to be sharded or not, carry from  Executor to StatementHandler layer
+     */
+    public static final ThreadLocal<Boolean> SHARDING_FLAG_CTX = new ThreadLocal<>();
 
 }

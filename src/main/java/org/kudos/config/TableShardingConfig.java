@@ -16,5 +16,4 @@ public class TableShardingConfig {
     private Integer dbCnt;
 
     private Integer tableCnt;
-
 }

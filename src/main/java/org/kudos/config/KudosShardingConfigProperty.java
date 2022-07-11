@@ -30,9 +30,9 @@ public class KudosShardingConfigProperty {
     /**
      * data source group config.
      * <p>
-     * k: shardingStrategyName of the data source group
+     * k: getStrategyName of the data source group
      * <p>
-     * v: data sources of this group;
+     * v: data sources of this group
      */
     private Map<String, DataSourceGroupConfig> dataSourceGroupMap;
     /**

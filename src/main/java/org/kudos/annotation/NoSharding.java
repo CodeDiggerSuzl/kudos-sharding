@@ -8,7 +8,7 @@ import java.lang.annotation.Target;
 /**
  * no sharding mark.
  * <p>
- * once marked a mapper, it will not be sharded.
+ * once marked a mapper, it will not be sharded, even the KudosSharding annotation is marked.
  *
  * @author suzl
  */

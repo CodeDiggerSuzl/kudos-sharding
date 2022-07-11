@@ -1,4 +1,6 @@
-package org.kudos.sharding;
+package org.kudos.sharding.strategy;
+
+import org.kudos.sharding.ShardingResult;
 
 /**
  * Base sharding strategy.
@@ -34,5 +36,5 @@ public interface ShardingStrategy {
      *
      * @return the name of sharding strategy
      */
-    String shardingStrategyName();
+    String getStrategyName();
 }

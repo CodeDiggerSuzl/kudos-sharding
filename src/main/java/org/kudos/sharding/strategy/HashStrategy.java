@@ -1,11 +1,16 @@
-package org.kudos.sharding;
+package org.kudos.sharding.strategy;
+
+import org.kudos.sharding.ShardingResult;
+import org.kudos.sharding.ShardingStrategyType;
+import org.kudos.sharding.strategy.ShardingStrategy;
+import org.springframework.stereotype.Component;
 
 /**
  * hash sharding strategy. default sharding strategy.
  *
  * @author suzl
  */
-
+@Component
 public class HashStrategy implements ShardingStrategy {
 
     /**
@@ -28,7 +33,7 @@ public class HashStrategy implements ShardingStrategy {
     }
 
     @Override
-    public String shardingStrategyName() {
+    public String getStrategyName() {
         return ShardingStrategyType.hash.name();
     }
 

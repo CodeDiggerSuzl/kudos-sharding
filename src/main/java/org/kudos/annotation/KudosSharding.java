@@ -1,7 +1,7 @@
 package org.kudos.annotation;
 
-import org.kudos.sharding.HashStrategy;
-import org.kudos.sharding.ShardingStrategy;
+import org.kudos.sharding.strategy.HashStrategy;
+import org.kudos.sharding.strategy.ShardingStrategy;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -17,8 +17,21 @@ import java.lang.annotation.Target;
 @Target({ElementType.TYPE})
 public @interface KudosSharding {
 
-    /*table names of this sharding, could not be num*/
-    String[] tableName();
+    /**
+     * table names of this sharding, could not be null.
+     * <p>
+     * if allTableNames is only one and equals main tableName, then just use main tableName
+     * <p>
+     * if allTableNames is more than one(have to contain the main tableName), the mainTableShardingStrategy is for main
+     * class, and the rest of tableNames will use the sharding strategy in config file.
+     * <b>
+     * <p>
+     * all table names after sharding their data source has to be the same. the business caller has to guarantee that.
+     * </b>
+     */
+    String[] allTableNames();
+
+    String mainTableName(); // necessary or not ?
 
     /**
      * sharding property. not null
@@ -26,15 +39,10 @@ public @interface KudosSharding {
     String shardingKey();
 
     /**
-     * weather to use sharding key or not
-     */
-    // is this filed necessary?
-    /// boolean useShardingKey() default true;
-
-    /**
      * could be null.
      */
-    Class<? extends ShardingStrategy> shardingStrategy() default HashStrategy.class;
+    Class<? extends ShardingStrategy> mainTableShardingStrategy() default HashStrategy.class;
+
 
     /**
      * connector between table and table number
@@ -44,6 +52,7 @@ public @interface KudosSharding {
     /*
      * only useful for specific sharding strategy
      */
+
     /**
      * specific db number, always choose this datasource
      */

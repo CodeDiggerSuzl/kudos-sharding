@@ -29,12 +29,13 @@ public class RemoteConfigFetcher {
     public String fetchCurrDatasourceGroupKey() {
         try (Jedis resource = pool.getResource()) {
             String remoteConfig = resource.get(CONFIG_KEY);
-            log.info("get remote config: {}", remoteConfig);
+            log.info("get remote data source group config: {}", remoteConfig);
             if (StringUtils.isEmpty(remoteConfig)) {
                 return DEFAULT_CONFIG;
             }
             return remoteConfig;
         } catch (Exception e) {
+            log.error("error fetching remote group key", e);
             return DEFAULT_CONFIG;
         }
     }

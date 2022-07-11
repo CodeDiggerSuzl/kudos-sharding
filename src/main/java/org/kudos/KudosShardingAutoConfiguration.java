@@ -37,6 +37,8 @@ import java.util.Set;
 @ConditionalOnClass({DruidDataSource.class, KudosSharding.class})
 public class KudosShardingAutoConfiguration {
 
+    private static final int DATASOURCE_GROUP_SIZE = 4;
+
     @Bean
     @ConditionalOnMissingBean
     @ConfigurationProperties(prefix = "kudos.sharding")
@@ -69,36 +71,35 @@ public class KudosShardingAutoConfiguration {
             throw new IllegalArgumentException("default data source group is not found, please check your config");
         }
 
-        final Set<Map.Entry<String, DataSourceGroupConfig>> entries = dataSourceGroupMap.entrySet();
 
-        Map<String, DataSourceMapping> dsgMappingMap = new HashMap<>(entries.size());
+        Map<String, DataSourceMapping> dsgMappingMap = new HashMap<>(16);
 
-        for (Map.Entry<String, DataSourceGroupConfig> entry : entries) {
-            final String key = entry.getKey();
+        for (Map.Entry<String, DataSourceGroupConfig> entry : dataSourceGroupMap.entrySet()) {
+            final String groupKey = entry.getKey();
             final DataSourceGroupConfig datasourceGroup = entry.getValue();
 
             if (datasourceGroup == null) {
-                throw new IllegalArgumentException("data source group config of [" + key + "] is null, please check your config");
+                throw new IllegalArgumentException("data source group config of [" + groupKey + "] is null, please check your config");
             }
 
             final String defaultDsName = datasourceGroup.getDefaultDataSourceName();
             if (StringUtils.isEmpty(defaultDsName)) {
-                throw new IllegalArgumentException("default data source shardingStrategyName of [" + key + "] is empty, please check your config");
+                throw new IllegalArgumentException("default data source getStrategyName of [" + groupKey + "] is empty, please check your config");
             }
 
             final Map<String, DataBaseConfig> dataBaseConfigMap = datasourceGroup.getDataBaseConfigMap();
             if (dataBaseConfigMap == null || dataBaseConfigMap.isEmpty()) {
-                throw new IllegalArgumentException("data base config map of [" + key + "] is empty, please check your config");
+                throw new IllegalArgumentException("data base config map of [" + groupKey + "] is empty, please check your config");
             }
 
             final DataBaseConfig defaultDatasource = dataBaseConfigMap.get(defaultDsName);
             if (defaultDatasource == null) {
-                throw new IllegalArgumentException("default data source of [" + key + "] is not found, please check your config");
+                throw new IllegalArgumentException("default data source of [" + groupKey + "] is not found, please check your config");
             }
 
             final Map<String, TableShardingConfig> tableShardingConfigMap = datasourceGroup.getTableShardingConfigMap();
             if (tableShardingConfigMap == null || tableShardingConfigMap.isEmpty()) {
-                throw new IllegalArgumentException("table sharding config map of [" + key + "] is empty, please check your config");
+                throw new IllegalArgumentException("table sharding config map of [" + groupKey + "] is empty, please check your config");
             }
 
             final DataSourceMapping dsMapping = new DataSourceMapping();
@@ -115,9 +116,32 @@ public class KudosShardingAutoConfiguration {
                 dataSourceMap.put(k, ds);
             });
             dsMapping.setDataSourceMap(dataSourceMap);
-            dsgMappingMap.put(key, dsMapping);
+
+            final Map<String, String> dbMapping = datasourceGroup.getDbMapping();
+            if (dbMapping == null || dbMapping.isEmpty()) {
+                throw new IllegalArgumentException("db mapping of [" + groupKey + "] is empty, please check your config");
+            }
+            dbMapping.forEach((dbNo, dbName) -> {
+                if (StringUtils.isEmpty(dbNo) || StringUtils.isEmpty(dbName)) {
+                    throw new IllegalArgumentException("db mapping of [" + groupKey + "] is empty, please check your config");
+                }
+                // if dbNo is not an umber, then throw exception
+                if (!org.apache.commons.lang3.StringUtils.isNumeric(dbNo)) {
+                    throw new IllegalArgumentException("db mapping of [" + groupKey + "], [" + dbNo + "] is not a number, please check your config");
+                }
+                if (dbNo.length() > DATASOURCE_GROUP_SIZE) {
+                    throw new IllegalArgumentException("db mapping of [" + groupKey + "], [" + dbNo + "] is too long, you might don't need " + dbNo + " databases. check your config");
+                }
+                if (dbNo.length() < DATASOURCE_GROUP_SIZE) {
+                    dbMapping.put(new DecimalFormat("0000").format(new BigDecimal(dbNo)), dbName); // use 4 digits to format the dbNo
+                    dbMapping.remove(dbNo);
+                }
+            });
+            dsMapping.setDbNumberMapping(dbMapping);
+            dsgMappingMap.put(groupKey, dsMapping);
         }
-        return new KudosDynamicDataSource(dsgMappingMap);
+
+        return new KudosDynamicDataSource(dsgMappingMap, property.getDefaultDataSourceGroup());
     }
 
 
@@ -127,7 +151,7 @@ public class KudosShardingAutoConfiguration {
         log.info("initializing kudosShardingInterceptor through kudos sharding config = {}", JsonUtils.toStr(property));
         final Map<String, DataSourceGroupConfig> dataSourceGroupMap = property.getDataSourceGroupMap();
 
-        Map<String, Map<String, String>> dbNoMapping = new HashMap<>(dataSourceGroupMap.size());
+        // Map<String, Map<String, String>> dbNoMapping = new HashMap<>(dataSourceGroupMap.size());
         Map<String, Map<String, TableShardingConfig>> tableShardingConfigMap = new HashMap<>(dataSourceGroupMap.size());
 
         for (Map.Entry<String, DataSourceGroupConfig> entry : dataSourceGroupMap.entrySet()) {
@@ -158,43 +182,31 @@ public class KudosShardingAutoConfiguration {
 
             });
 
-            final Map<String, String> dbMapping = group.getDbMapping();
-            if (dbMapping == null || dbMapping.isEmpty()) {
-                throw new IllegalArgumentException("db mapping of [" + groupKey + "] is empty, please check your config");
-            }
-            dbMapping.forEach((dbNo, dbName) -> {
-                if (StringUtils.isEmpty(dbNo) || StringUtils.isEmpty(dbName)) {
-                    throw new IllegalArgumentException("db mapping of [" + groupKey + "] is empty, please check your config");
-                }
-                // if dbNo is not an umber, then throw exception
-                if (!org.apache.commons.lang3.StringUtils.isNumeric(dbNo)) {
-                    throw new IllegalArgumentException("db mapping of [" + groupKey + "], [" + dbNo + "] is not a number, please check your config");
-                }
-                if (dbNo.length() > 4) {
-                    throw new IllegalArgumentException("db mapping of [" + groupKey + "], [" + dbNo + "] is too long, you might don't need " + dbNo + " databases. check your config");
-                }
-                if (dbNo.length() < 4) {
-                    dbMapping.put(new DecimalFormat("0000").format(new BigDecimal(dbNo)), dbName);
-                    dbMapping.remove(dbNo);
-                }
-            });
-            dbNoMapping.put(groupKey, dbMapping);
+            //            final Map<String, String> dbMapping = group.getDbMapping();
+            //            if (dbMapping == null || dbMapping.isEmpty()) {
+            //                throw new IllegalArgumentException("db mapping of [" + groupKey + "] is empty, please check your config");
+            //            }
+            //            dbMapping.forEach((dbNo, dbName) -> {
+            //                if (StringUtils.isEmpty(dbNo) || StringUtils.isEmpty(dbName)) {
+            //                    throw new IllegalArgumentException("db mapping of [" + groupKey + "] is empty, please check your config");
+            //                }
+            //                // if dbNo is not an umber, then throw exception
+            //                if (!org.apache.commons.lang3.StringUtils.isNumeric(dbNo)) {
+            //                    throw new IllegalArgumentException("db mapping of [" + groupKey + "], [" + dbNo + "] is not a number, please check your config");
+            //                }
+            //                if (dbNo.length() > 4) {
+            //                    throw new IllegalArgumentException("db mapping of [" + groupKey + "], [" + dbNo + "] is too long, you might don't need " + dbNo + " databases. check your config");
+            //                }
+            //                if (dbNo.length() < 4) {
+            //                    dbMapping.put(new DecimalFormat("0000").format(new BigDecimal(dbNo)), dbName);
+            //                    dbMapping.remove(dbNo);
+            //                }
+            //            });
+            // dbNoMapping.put(groupKey, dbMapping);
             tableShardingConfigMap.put(groupKey, shardingCfgMap);
         }
-        return new ShardingInterceptor(tableShardingConfigMap, dbNoMapping);
+        return new ShardingInterceptor(tableShardingConfigMap);
     }
 
-    public static void main(String[] args) {
-        final String format = new DecimalFormat("0000").format(new BigDecimal("01"));
-        System.out.println(format);
-
-        final String format1 = new DecimalFormat("0000").format(new BigDecimal("0101"));
-        System.out.println(format1);
-
-        final String format2 = new DecimalFormat("0000").format("1011");
-        System.out.println(format2);
-
-
-    }
 
 }

@@ -6,14 +6,27 @@ import javax.sql.DataSource;
 import java.util.Map;
 
 /**
+ *
  * @author suzl
  */
 @Data
 public class DataSourceMapping {
 
+    /**
+     * default data source mapping
+     */
     private String defaultDataSourceName;
 
+    /**
+     * key: data source name, value: the datasource
+     */
     private Map<String, DataSource> dataSourceMap;
 
+
     private Map<String, TableShardingConfig> tableShardingConfigMap;
+
+    /**
+     * key: data source number, value: data source name
+     */
+    private Map<String, String> dbNumberMapping;
 }
