@@ -1,7 +1,6 @@
 package org.kudos.intercepter;
 
 import com.github.benmanes.caffeine.cache.Cache;
-import com.sun.tools.corba.se.idl.constExpr.Or;
 import org.apache.ibatis.binding.MapperMethod;
 import org.apache.ibatis.cache.CacheKey;
 import org.apache.ibatis.executor.Executor;
@@ -23,9 +22,9 @@ import org.kudos.annotation.KudosSharding;
 import org.kudos.annotation.NoSharding;
 import org.kudos.config.RemoteConfigFetcher;
 import org.kudos.config.TableShardingConfig;
+import org.kudos.context.ShardingContextHolder;
 import org.kudos.sharding.ShardingResult;
 import org.kudos.sharding.ShardingStrategy;
-import org.kudos.context.ShardingContextHolder;
 import org.kudos.utils.JsonUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.Ordered;
@@ -175,11 +174,9 @@ public class ShardingInterceptor implements Interceptor {
                     // really tricky here
                     String regex = "\\b" + originalTableName + "\\b";
                     replacedSql = originalSql.replaceAll(regex, afterTableName);
-
                 }
                 metaObject.setValue(sqlPropName, replacedSql);
                 System.out.println("replaced sql: " + replacedSql);
-
             } finally {
                 shardingFlagCtx.remove();
                 ShardingContextHolder.DB_CTX.remove();

@@ -12,7 +12,7 @@ import redis.clients.jedis.JedisPool;
  * You can config the current data source group config(or other config)in nacos, apollo, etcd, zk, redis, etc.
  * <p>
  * Dynamically change the data source group by a switch or a trigger.
- * TODO: implement this later.
+ * <p>
  * Currently, we just use redis to store the data source group config.
  *
  * @author suzl

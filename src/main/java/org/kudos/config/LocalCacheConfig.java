@@ -18,6 +18,6 @@ public class LocalCacheConfig {
         return Caffeine.newBuilder()
                 .expireAfterWrite(1, TimeUnit.HOURS)
                 .initialCapacity(64)
-                .maximumSize(515).build();
+                .maximumSize(512).build();
     }
 }

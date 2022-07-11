@@ -1,13 +1,19 @@
 TODO
 
-- [ ] druid pool config
-- [x] add config, ds number and name mapping map
-- [ ] improve core sharding logic, make it ok.
-- [ ] decide sharding logic for specific cases.
-- [ ] judge all type of sharding value
-- [ ] use strategy pattern to choose sharding strategy
-- [ ] local cache to improve performance.
-- [ ] transaction support ? (not sure yet)
-- [ ] check code and validation of code
-- [ ] write test cases and other stuff
-- [ ] write doc and read me file.
+### Dev Log
+
+- [x] Code about dynamic datasource in spring
+- [x] Code about mybatis interceptor
+- [x] ThreadLocal
+- [x] Add config, ds number and name mapping map
+- [ ] Improve core sharding logic, make it ok.
+- [ ] Decide sharding logic for specific cases.
+- [ ] Judge all type of parameter in mapper interface.
+- [ ] A table doesn't need to be sharded, but previous table was sharded.
+- [ ] Druid pool config
+- [ ] Use strategy pattern to choose sharding strategy
+- [ ] Local cache to improve performance.
+- [ ] Transaction support ? (not sure yet)
+- [ ] Check code and validation of code
+- [ ] Write test cases and other stuff
+- [ ] Write docs.

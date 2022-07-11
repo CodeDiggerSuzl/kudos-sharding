@@ -6,7 +6,9 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * no sharding
+ * no sharding mark.
+ * <p>
+ * once marked a mapper, it will not be sharded.
  *
  * @author suzl
  */

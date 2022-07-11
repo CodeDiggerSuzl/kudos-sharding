@@ -13,7 +13,7 @@ public class ShardingContextHolder {
     }
 
     /**
-     * sharding result
+     * sharding result.
      */
     public static final ThreadLocal<ShardingResult> DB_CTX = new ThreadLocal<>();
 
