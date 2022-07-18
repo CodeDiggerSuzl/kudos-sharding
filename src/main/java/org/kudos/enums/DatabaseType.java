@@ -1,11 +1,11 @@
-package org.kudos.config;
+package org.kudos.enums;
 
 /**
  * data source type. not using yet.
  *
  * @author suzl
  */
-public enum DbTypeEnum {
+public enum DatabaseType {
 
     READ(1, "read/follower"),
 
@@ -14,7 +14,7 @@ public enum DbTypeEnum {
 
     private final String description;
 
-    DbTypeEnum(Integer type, String description) {
+    DatabaseType(Integer type, String description) {
         this.type = type;
         this.description = description;
     }

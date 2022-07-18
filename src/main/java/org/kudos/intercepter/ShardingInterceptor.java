@@ -70,23 +70,13 @@ public class ShardingInterceptor implements Interceptor {
      */
     private Map<String, Map<String, String>> dbNoMapping;
 
-    //    /**
-    //     * whether this mapper need to be sharded or not, carry from  Executor to StatementHandler layer
-    //     */
-    //    private final ThreadLocal<Boolean> ShardingContextHolder.SHARDING_FLAG_CTX = new ThreadLocal<>();
-    /**
-     * table name(with table number), carry from  Executor to StatementHandler layer
-     */
-    private final ThreadLocal<Map<String, String>> tableNameMapCtx = new ThreadLocal<>();
+
 
     public ShardingInterceptor() {
     }
 
-    public ShardingInterceptor(final Map<String, Map<String, TableShardingConfig>> tableShardingConfigMap
-                               // final Map<String, Map<String, String>> dbNoMapping
-    ) {
+    public ShardingInterceptor(final Map<String, Map<String, TableShardingConfig>> tableShardingConfigMap) {
         this.tableShardingConfigMap = tableShardingConfigMap;
-        // this.dbNoMapping = dbNoMapping;
     }
 
 
@@ -94,7 +84,7 @@ public class ShardingInterceptor implements Interceptor {
 
     // local cache: key as the dao getStrategyName, and annotation config
     @Autowired
-    Cache<String, Object> caffeineCache;
+    private Cache<String, Object> caffeineCache;
 
     @Override
     public Object intercept(Invocation invocation) throws Throwable {
@@ -120,19 +110,23 @@ public class ShardingInterceptor implements Interceptor {
                 return invocation.proceed();
             }
 
-            final KudosSharding shardingCfg = AnnotationUtils.findAnnotation(daoClazz, KudosSharding.class);
+            final KudosSharding shardingConf = AnnotationUtils.findAnnotation(daoClazz, KudosSharding.class);
             // // not marked with annotation
-            if (shardingCfg == null) {
+            if (shardingConf == null) {
                 ShardingContextHolder.SHARDING_FLAG_CTX.set(false);
                 return invocation.proceed();
             }
-            // here is core sharding logic
-            final String shardingKey = shardingCfg.shardingKey();
-            //
-            final Class<? extends ShardingStrategy> strategy = shardingCfg.mainTableShardingStrategy(); // add cache TODO
 
-            final String[] tableNameArr = shardingCfg.allTableNames();
-            final String tableName = tableNameArr[0];
+            // here is core sharding logic
+            final String shardingKey = shardingConf.shardingKey();
+
+            // get value of sharding key from args
+
+            //
+            final Class<? extends ShardingStrategy> strategy = shardingConf.shardingStrategy(); // add cache TODO
+
+
+            final String[] tableNameArr = shardingConf.otherTableNames();
             final ShardingStrategy shardingStrategy = strategy.newInstance();
             final Object arg = args[1];
             if (arg instanceof MapperMethod.ParamMap) {
@@ -143,8 +137,7 @@ public class ShardingInterceptor implements Interceptor {
                 ShardingContextHolder.SHARDING_RESULT_CTX.set(shardingResult);
 
                 Map<String, String> tableNameMapping = new HashMap<>();
-                tableNameMapping.put(tableName, tableName + "_" + shardingResult.getTableNo());
-                tableNameMapCtx.set(tableNameMapping);
+                ShardingContextHolder.tableNameMapCtx.set(tableNameMapping);
             }
 
 
@@ -163,12 +156,12 @@ public class ShardingInterceptor implements Interceptor {
         // sql replacement
         if (StatementHandler.class.isAssignableFrom(targetClz)) {
             try {
-                final Thread thread = Thread.currentThread();
+                // final Thread thread = Thread.currentThread();
                 if (Boolean.FALSE.equals(ShardingContextHolder.SHARDING_FLAG_CTX.get())) {
                     // do nothing
                     return invocation.proceed();
                 }
-                final Map<String, String> tableMapping = tableNameMapCtx.get();
+                final Map<String, String> tableMapping = ShardingContextHolder.tableNameMapCtx.get();
                 // get  sql
                 final MetaObject metaObject = MetaObject.forObject(target, SystemMetaObject.DEFAULT_OBJECT_FACTORY, SystemMetaObject.DEFAULT_OBJECT_WRAPPER_FACTORY, REFLECTOR_FACTORY);
                 final String sqlPropName = "delegate.boundSql.sql";
@@ -184,9 +177,7 @@ public class ShardingInterceptor implements Interceptor {
                 metaObject.setValue(sqlPropName, replacedSql);
                 System.out.println("replaced sql: " + replacedSql);
             } finally {
-                ShardingContextHolder.SHARDING_FLAG_CTX.remove();
-                ShardingContextHolder.SHARDING_RESULT_CTX.remove();
-                tableNameMapCtx.remove();
+                ShardingContextHolder.clearAllContexts();
             }
         }
         return invocation.proceed();

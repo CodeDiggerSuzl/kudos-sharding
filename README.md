@@ -16,6 +16,7 @@ TODO
 - [ ] Use strategy pattern to choose sharding strategy
 - [ ] Local cache to improve performance.
 - [ ] Transaction support ? (not sure yet)
+- [ ] Exception handling.
 - [ ] Check code and validation of code
 - [ ] Write test cases and other stuff
 - [ ] Write docs.

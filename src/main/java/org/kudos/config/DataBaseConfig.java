@@ -1,6 +1,7 @@
 package org.kudos.config;
 
 import lombok.Data;
+import org.kudos.enums.DatabaseType;
 
 /**
  * basic config of a database.
@@ -13,7 +14,7 @@ public class DataBaseConfig {
     /**
      * db type read or write
      */
-    private DbTypeEnum dbType;
+    private DatabaseType dbType;
 
     private String url;
 

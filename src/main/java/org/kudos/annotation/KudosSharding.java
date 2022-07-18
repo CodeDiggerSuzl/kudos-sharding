@@ -18,54 +18,41 @@ import java.lang.annotation.Target;
 public @interface KudosSharding {
 
     /**
-     * table names of this sharding, could not be null.
-     * <p>
-     * if allTableNames is only one and equals main tableName, then just use main tableName
-     * <p>
-     * if allTableNames is more than one(have to contain the main tableName), the mainTableShardingStrategy is for main
-     * class, and the rest of tableNames will use the sharding strategy in config file.
-     * <b>
-     * <p>
-     * all table names after sharding their data source has to be the same. the business caller has to guarantee that.
-     * </b>
+     * main table name, could not be null.
      */
-    String[] allTableNames();
-
-    String mainTableName(); // necessary or not ?
+    String mainTableName();
 
     /**
-     * sharding property. not null
+     * Other table names of this sharding, without main table.
+     * <p>
+     * If other table names is empty, the main table is the only table of this sharding.
+     * <p>
+     * Main table will use the shardingStrategy in the annotation and the other tables will use the config in config files.
+     * <b>
+     * <p>
+     * All table names after sharding their data source must be the same. the business caller has to guarantee that.
+     * </b>
+     */
+    String[] otherTableNames() default {}; // other table names, using for join table.
+
+
+    /**
+     * sharding property. not null.
      */
     String shardingKey();
 
     /**
-     * could be null.
+     * sharding strategy for main table. not null.
      */
-    Class<? extends ShardingStrategy> mainTableShardingStrategy() default HashStrategy.class;
-
+    Class<? extends ShardingStrategy> shardingStrategy() default HashStrategy.class;
 
     /**
-     * connector between table and table number
+     * connector between table and table number.
      */
     String tableConnector() default "_";
 
-    /*
-     * only useful for specific sharding strategy
-     */
+    SpecificConfig[] specificShardingConfig() default {};
 
-    /**
-     * specific db number, always choose this datasource
-     */
-    String specificDataSourceNumber();
-
-    /**
-     * same as specificDataSourceNumber
-     */
-    String specificTableNumber();
-
-    /**
-     * only useful for date sharding strategy
-     */
-    String dateFormat() default "yyyyMMdd";
+    DataConfig dataShardingConfig() default @DataConfig;
 
 }

@@ -24,12 +24,12 @@ public interface ShardingStrategy {
     /**
      * sharding method
      *
-     * @param value    the value of  sharding key
-     * @param dsCnt    the total count of datasource
-     * @param tableCnt the total count of table
+     * @param value         the value of  sharding key
+     * @param datasourceCnt the total count of datasource
+     * @param tableCnt      the total count of table
      * @return the sharding result
      */
-    ShardingResult sharding(Object value, int dsCnt, int tableCnt);
+    ShardingResult sharding(Object value, int datasourceCnt, int tableCnt);
 
     /**
      * the name of sharding strategy

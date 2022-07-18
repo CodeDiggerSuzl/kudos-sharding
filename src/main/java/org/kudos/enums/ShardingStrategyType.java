@@ -1,4 +1,4 @@
-package org.kudos.sharding;
+package org.kudos.enums;
 
 /**
  * support sharding strategy type.
