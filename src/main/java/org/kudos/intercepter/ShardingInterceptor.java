@@ -59,6 +59,9 @@ public class ShardingInterceptor implements Interceptor {
 
     @Autowired
     private RemoteConfigFetcher remoteConfigFetcher;
+
+    @Autowired
+    private KudosShardingHelper shardingHelper;
     /**
      * table sharding config map key: datasource group, value: table sharding config(with sharding strategy, datasource
      * total, table total)
@@ -71,14 +74,12 @@ public class ShardingInterceptor implements Interceptor {
     private Map<String, Map<String, String>> dbNoMapping;
 
 
-
     public ShardingInterceptor() {
     }
 
     public ShardingInterceptor(final Map<String, Map<String, TableShardingConfig>> tableShardingConfigMap) {
         this.tableShardingConfigMap = tableShardingConfigMap;
     }
-
 
     private static final ReflectorFactory REFLECTOR_FACTORY = new DefaultReflectorFactory();
 
@@ -105,63 +106,67 @@ public class ShardingInterceptor implements Interceptor {
             final NoSharding nosharding = AnnotationUtils.findAnnotation(daoClazz, NoSharding.class);
             // once marked as no sharding, this mapper will not be sharded, even if it has sharding annotation
             if (nosharding != null) {
-                ShardingContextHolder.SHARDING_FLAG_CTX.set(false);
+                ShardingContextHolder.setShardingFlag(false);
                 // don't shard
                 return invocation.proceed();
             }
 
             final KudosSharding shardingConf = AnnotationUtils.findAnnotation(daoClazz, KudosSharding.class);
+            log.debug("sharding annotation config: {}", JsonUtils.toStr(shardingConf));
             // // not marked with annotation
             if (shardingConf == null) {
-                ShardingContextHolder.SHARDING_FLAG_CTX.set(false);
+                ShardingContextHolder.setShardingFlag(false);
                 return invocation.proceed();
             }
 
             // here is core sharding logic
             final String shardingKey = shardingConf.shardingKey();
-
             // get value of sharding key from args
-
-            //
+            final Object arg = args[1];
+            final Object shardingValue = shardingHelper.getShardingKeyValue(shardingKey, arg, mappedStatement);
+            log.debug("sharding key: {}, sharding value: {}", shardingKey, shardingValue);
+            // sharding strategy for main table
             final Class<? extends ShardingStrategy> strategy = shardingConf.shardingStrategy(); // add cache TODO
 
+            final String mainTableName = shardingConf.mainTableName();
+            final String[] otherTableArr = shardingConf.otherTableNames();
 
-            final String[] tableNameArr = shardingConf.otherTableNames();
-            final ShardingStrategy shardingStrategy = strategy.newInstance();
-            final Object arg = args[1];
-            if (arg instanceof MapperMethod.ParamMap) {
-                // TODO here
-                final Object shardingKeyValue = ((MapperMethod.ParamMap<?>) arg).get(shardingKey);
-                final ShardingResult shardingResult = shardingStrategy.sharding(shardingKeyValue, 3, 3);
-                System.out.println("shardingKey:" + shardingKey + "value = " + shardingKeyValue + " shardingResult = " + JsonUtils.toStr(shardingResult));
-                ShardingContextHolder.SHARDING_RESULT_CTX.set(shardingResult);
+            final String dbGroupKey = remoteConfigFetcher.fetchCurrDatasourceGroupKey();
+            final Map<String, TableShardingConfig> tableShardingConfigMap = this.tableShardingConfigMap.get(dbGroupKey);
+            final String connector = shardingConf.tableConnector();
 
-                Map<String, String> tableNameMapping = new HashMap<>();
-                ShardingContextHolder.tableNameMapCtx.set(tableNameMapping);
+
+            // multiple table sharding
+            if (otherTableArr.length > 0) {
+                // pass
+            } else {
+                // only one table sharding
+                TableShardingConfig mainTableConfig = tableShardingConfigMap.get(mainTableName);
+                if (mainTableConfig == null) {
+                    ShardingContextHolder.clearAllContexts();
+                    throw new RuntimeException("could not find table sharding config for table: [" + mainTableName + "]in data source group: [" + dbGroupKey + "].please check your config");
+                }
+                final ShardingStrategy shardingStrategy = strategy.newInstance();
+                ShardingResult shardingResult = shardingStrategy.sharding(shardingValue, mainTableConfig.getDbCnt(), mainTableConfig.getTableCnt());
+                // set sharding result to context holder
+                ShardingContextHolder.setShardingResult(shardingResult);
+                final String tableNo = shardingResult.getTableNo();
+                final String tableNameWithNo = String.format("%s%s%s", mainTableName, connector, tableNo);
+                Map<String, String> tableNameMap = new HashMap<>(1);
+                tableNameMap.put(tableNo, tableNameWithNo);
+                ShardingContextHolder.setTableNameMap(tableNameMap);
             }
-
-
-            // get sharding config
-            // 1. get sharding strategy
-            // 2. get sharding key
-            // 3. get sharding result by sharding strategy and sharding key
-            // 4. set into the thread local context
-            // 5. determine which datasource to use
-            // 6. sql replace
-            // 7. free the thread local
-
-
         }
 
         // sql replacement
         if (StatementHandler.class.isAssignableFrom(targetClz)) {
             try {
                 // final Thread thread = Thread.currentThread();
-                if (Boolean.FALSE.equals(ShardingContextHolder.SHARDING_FLAG_CTX.get())) {
+                if (Boolean.FALSE.equals(ShardingContextHolder.getShardingFlag())) {
                     // do nothing
                     return invocation.proceed();
                 }
-                final Map<String, String> tableMapping = ShardingContextHolder.tableNameMapCtx.get();
+                final Map<String, String> tableMapping = ShardingContextHolder.getTableNameMap();
                 // get  sql
                 final MetaObject metaObject = MetaObject.forObject(target, SystemMetaObject.DEFAULT_OBJECT_FACTORY, SystemMetaObject.DEFAULT_OBJECT_WRAPPER_FACTORY, REFLECTOR_FACTORY);
                 final String sqlPropName = "delegate.boundSql.sql";

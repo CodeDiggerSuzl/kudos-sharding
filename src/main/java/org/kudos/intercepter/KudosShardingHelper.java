@@ -8,14 +8,13 @@ import org.springframework.stereotype.Component;
 import java.lang.reflect.Field;
 import java.util.Map;
 
-/**
- * TODO add this
- */
 @SuppressWarnings({"rawtypes", "unchecked"})
 @Component
-public class ShardingHelper {
+public class KudosShardingHelper {
+
     /**
      * Judge all kind of arg type,and get the sharding key's value.
+     * TODO: need to check this core logic.
      *
      * @param key             sharding key's name
      * @param arg             mybatis argument
@@ -36,7 +35,7 @@ public class ShardingHelper {
                 // it's better and highly recommend to use the mybatis '@Param("key")' to mark the sharding key. it's much more simple and efficient.
                 throw new RuntimeException(String.format("Can't get sharding value via sharding key:[%s]", key));
             }
-            // Array and Map & List
+            // Array and Map & List TODO
             return valueObject;
         }
 

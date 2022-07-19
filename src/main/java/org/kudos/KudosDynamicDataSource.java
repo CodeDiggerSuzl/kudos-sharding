@@ -62,14 +62,14 @@ public class KudosDynamicDataSource extends AbstractRoutingDataSource {
 
         // no sharding.
         // try to get sharding flag
-        Boolean shardingFlag = ShardingContextHolder.SHARDING_FLAG_CTX.get();
+        Boolean shardingFlag = ShardingContextHolder.getShardingFlag();
         final String defaultDataSourceName = dataSourceMapping.getDefaultDataSourceName();
         if (shardingFlag == null || Boolean.FALSE.equals(shardingFlag)) {
             return getLookupKey(dataSourceGroupKey, defaultDataSourceName);
         }
 
         // sharding
-        final ShardingResult shardingResult = ShardingContextHolder.SHARDING_RESULT_CTX.get();
+        final ShardingResult shardingResult = ShardingContextHolder.getShardingResult();
         if (shardingResult == null || StringUtils.isEmpty(shardingResult.getDataSourceNo())) {
             throw new RuntimeException("get nothing from sharing result context");
         }
