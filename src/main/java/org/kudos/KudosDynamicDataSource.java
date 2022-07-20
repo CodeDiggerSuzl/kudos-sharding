@@ -3,10 +3,8 @@ package org.kudos;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.logging.log4j.util.Strings;
 import org.kudos.config.DataSourceMapping;
-import org.kudos.config.RemoteConfigFetcher;
 import org.kudos.context.ShardingContextHolder;
 import org.kudos.sharding.ShardingResult;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.datasource.lookup.AbstractRoutingDataSource;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
@@ -26,10 +24,7 @@ import java.util.Map;
 @Slf4j
 public class KudosDynamicDataSource extends AbstractRoutingDataSource {
 
-    private static final String SEPARATOR = "::";
-
-    @Autowired
-    private RemoteConfigFetcher remoteConfigFetcher;
+    private static final String SEPARATOR = "_:_";
 
     public KudosDynamicDataSource() {
     }
@@ -45,7 +40,8 @@ public class KudosDynamicDataSource extends AbstractRoutingDataSource {
 
     @Override
     protected Object determineCurrentLookupKey() {
-        String dataSourceGroupKey = remoteConfigFetcher.fetchCurrDatasourceGroupKey();
+        // String dataSourceGroupKey = remoteConfigFetcher.fetchCurrDatasourceGroupKey();
+        String dataSourceGroupKey = "default";
         log.info("determine curr look up key, got dataSource group key = {}", dataSourceGroupKey);
         if (StringUtils.isEmpty(dataSourceGroupKey)) {
             log.info("got nothing from data source group key, use default group key instead");
@@ -64,12 +60,13 @@ public class KudosDynamicDataSource extends AbstractRoutingDataSource {
         // try to get sharding flag
         Boolean shardingFlag = ShardingContextHolder.getShardingFlag();
         final String defaultDataSourceName = dataSourceMapping.getDefaultDataSourceName();
-        if (shardingFlag == null || Boolean.FALSE.equals(shardingFlag)) {
+        if (Boolean.FALSE.equals(shardingFlag)) {
             return getLookupKey(dataSourceGroupKey, defaultDataSourceName);
         }
 
         // sharding
         final ShardingResult shardingResult = ShardingContextHolder.getShardingResult();
+        log.info("[kudos sharding]  ShardingContextHolder sharding result = {}", shardingResult);
         if (shardingResult == null || StringUtils.isEmpty(shardingResult.getDataSourceNo())) {
             throw new RuntimeException("get nothing from sharing result context");
         }
@@ -77,10 +74,10 @@ public class KudosDynamicDataSource extends AbstractRoutingDataSource {
         final Map<String, String> dbNumberMapping = dataSourceMapping.getDbNumberMapping();
         final String dataSourceName = dbNumberMapping.get(dataSourceNo);
         if (StringUtils.isEmpty(dataSourceName)) {
-            throw new RuntimeException("could get data source name by data source no: " + dataSourceNo + " .");
+            throw new RuntimeException(String.format("could get data source name by data source no: %s.", dataSourceNo));
         }
         final String lookupKey = getLookupKey(dataSourceGroupKey, dataSourceName);
-        log.debug("get lookup key = {}", lookupKey);
+        log.debug("determineCurrentLookupKey: got lookup key = {}", lookupKey);
         return lookupKey;
     }
 
@@ -92,7 +89,9 @@ public class KudosDynamicDataSource extends AbstractRoutingDataSource {
      * @return look up key
      */
     private String getLookupKey(String dsGroupKey, String dataSourceName) {
-        return dsGroupKey + SEPARATOR + dataSourceName;
+        final String lookupKey = String.format("%s%s%s", dsGroupKey, SEPARATOR, dataSourceName);
+        log.info("get lookup key = {}", lookupKey);
+        return lookupKey;
     }
 
     @Override
@@ -114,15 +113,16 @@ public class KudosDynamicDataSource extends AbstractRoutingDataSource {
             final DataSourceMapping dataSourceMapping = entry.getValue();
             final Map<String, DataSource> dataSourceMap = dataSourceMapping.getDataSourceMap();
             for (Map.Entry<String, DataSource> dataSourceEntry : dataSourceMap.entrySet()) {
-                final String key = dataSourceEntry.getKey();
-                targetDataSourceMap.put(getLookupKey(groupKey, key), dataSourceEntry.getValue());
+                final String dsName = dataSourceEntry.getKey();
+                targetDataSourceMap.put(getLookupKey(groupKey, dsName), dataSourceEntry.getValue());
             }
         }
 
         // all ds
         super.setTargetDataSources(targetDataSourceMap);
         // default ds
-        super.setDefaultTargetDataSource(getLookupKey(datasourceGroupKey, defaultDataSourceName));
+        final Object defaultTargetDataSource = targetDataSourceMap.get(getLookupKey(datasourceGroupKey, defaultDataSourceName));
+        super.setDefaultTargetDataSource(defaultTargetDataSource);
         super.afterPropertiesSet();
     }
 }

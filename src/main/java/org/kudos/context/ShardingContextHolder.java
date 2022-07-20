@@ -60,7 +60,7 @@ public class ShardingContextHolder {
     }
 
     /**
-     * 清楚全部的上下文
+     * clear all the ctx.
      */
     public static void clearAllContexts() {
         SHARDING_RESULT_CTX.remove();

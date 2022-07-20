@@ -1,7 +1,7 @@
 package org.kudos.sharding.strategy;
 
-import org.kudos.sharding.ShardingResult;
 import org.kudos.enums.ShardingStrategyType;
+import org.kudos.sharding.ShardingResult;
 import org.springframework.stereotype.Component;
 
 /**
@@ -16,7 +16,7 @@ public class HashStrategy implements ShardingStrategy {
      * sharding by hash code.
      *
      * @param value         sharding field
-     * @param datasourceCnt    total data source count
+     * @param datasourceCnt total data source count
      * @param tableTotalCnt total table count
      * @return sharding result
      */

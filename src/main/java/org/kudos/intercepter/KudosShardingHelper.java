@@ -3,13 +3,11 @@ package org.kudos.intercepter;
 
 import org.apache.ibatis.binding.MapperMethod;
 import org.apache.ibatis.mapping.MappedStatement;
-import org.springframework.stereotype.Component;
 
 import java.lang.reflect.Field;
 import java.util.Map;
 
 @SuppressWarnings({"rawtypes", "unchecked"})
-@Component
 public class KudosShardingHelper {
 
     /**
@@ -21,7 +19,7 @@ public class KudosShardingHelper {
      * @param mappedStatement mybatis mapped statement
      * @return sharding key's value
      */
-    public Object getShardingKeyValue(String key, Object arg, MappedStatement mappedStatement)
+    public static Object getShardingKeyValue(String key, Object arg, MappedStatement mappedStatement)
             throws NoSuchFieldException, IllegalAccessException {
         // multiple parameters in the mapper interface
         if (arg instanceof MapperMethod.ParamMap) {
@@ -32,7 +30,7 @@ public class KudosShardingHelper {
                 // will not loop the parameterMap after directly getting the value failed, e.g. 'valueObject' is null.
                 // cause even if we could get the value from one of the Object in the parameterMap, but is unnecessary and could be wrong.
                 // it might cause unexpected results.
-                // it's better and highly recommend to use the mybatis '@Param("key")' to mark the sharding key. it's much more simple and efficient.
+                // it's better and highly recommend using the mybatis '@Param("key")' to mark the sharding key. it's much more simple and efficient.
                 throw new RuntimeException(String.format("Can't get sharding value via sharding key:[%s]", key));
             }
             // Array and Map & List TODO
@@ -64,7 +62,7 @@ public class KudosShardingHelper {
      * @param object arg
      * @return true or false
      */
-    private boolean currTypeIsBasic(Object object) {
+    private static boolean currTypeIsBasic(Object object) {
         return object.getClass().isPrimitive()
                 || object instanceof String
                 || object instanceof Integer

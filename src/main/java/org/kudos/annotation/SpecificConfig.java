@@ -6,7 +6,9 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * 制定分库分表的策略
+ * Only for specific sharding strategy.
+ *
+ * @author suzl
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({})

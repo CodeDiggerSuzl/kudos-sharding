@@ -53,6 +53,6 @@ public @interface KudosSharding {
 
     SpecificConfig[] specificShardingConfig() default {};
 
-    DataConfig dataShardingConfig() default @DataConfig;
+    DateConfig dataShardingConfig() default @DateConfig;
 
 }

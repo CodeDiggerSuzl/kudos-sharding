@@ -1,19 +1,18 @@
 package org.kudos;
 
 import com.alibaba.druid.pool.DruidDataSource;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.ibatis.plugin.Interceptor;
 import org.kudos.annotation.KudosSharding;
-import org.kudos.config.DataBaseConfig;
-import org.kudos.config.DataSourceGroupConfig;
-import org.kudos.config.DataSourceMapping;
-import org.kudos.config.KudosShardingConfigProperty;
-import org.kudos.config.TableShardingConfig;
+import org.kudos.config.*;
 import org.kudos.intercepter.ShardingInterceptor;
 import org.kudos.utils.JsonUtils;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
@@ -26,6 +25,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 /**
  * kudos sharding auto configuration.
@@ -34,10 +34,11 @@ import java.util.Set;
  */
 @Configuration
 @Slf4j
+@EnableConfigurationProperties
 @ConditionalOnClass({DruidDataSource.class, KudosSharding.class})
 public class KudosShardingAutoConfiguration {
 
-    private static final int DATASOURCE_GROUP_SIZE = 4;
+    private static final int DATASOURCE_GROUP_NAME_SIZE = 4;
 
     @Bean
     @ConditionalOnMissingBean
@@ -121,6 +122,7 @@ public class KudosShardingAutoConfiguration {
             if (dbMapping == null || dbMapping.isEmpty()) {
                 throw new IllegalArgumentException("db mapping of [" + groupKey + "] is empty, please check your config");
             }
+            Map<String, String> mapCpy = new HashMap<>(dbMapping.size());
             dbMapping.forEach((dbNo, dbName) -> {
                 if (StringUtils.isEmpty(dbNo) || StringUtils.isEmpty(dbName)) {
                     throw new IllegalArgumentException("db mapping of [" + groupKey + "] is empty, please check your config");
@@ -129,15 +131,13 @@ public class KudosShardingAutoConfiguration {
                 if (!org.apache.commons.lang3.StringUtils.isNumeric(dbNo)) {
                     throw new IllegalArgumentException("db mapping of [" + groupKey + "], [" + dbNo + "] is not a number, please check your config");
                 }
-                if (dbNo.length() > DATASOURCE_GROUP_SIZE) {
+                if (dbNo.length() > DATASOURCE_GROUP_NAME_SIZE) {
                     throw new IllegalArgumentException("db mapping of [" + groupKey + "], [" + dbNo + "] is too long, you might don't need " + dbNo + " databases. check your config");
                 }
-                if (dbNo.length() < DATASOURCE_GROUP_SIZE) {
-                    dbMapping.put(new DecimalFormat("0000").format(new BigDecimal(dbNo)), dbName); // use 4 digits to format the dbNo
-                    dbMapping.remove(dbNo);
-                }
+                // TODO better solution handle this
+                mapCpy.put(new DecimalFormat("0000").format(new BigDecimal(dbNo)), dbName);
             });
-            dsMapping.setDbNumberMapping(dbMapping);
+            dsMapping.setDbNumberMapping(mapCpy);
             dsgMappingMap.put(groupKey, dsMapping);
         }
 
@@ -151,7 +151,6 @@ public class KudosShardingAutoConfiguration {
         log.info("initializing kudosShardingInterceptor through kudos sharding config = {}", JsonUtils.toStr(property));
         final Map<String, DataSourceGroupConfig> dataSourceGroupMap = property.getDataSourceGroupMap();
 
-        // Map<String, Map<String, String>> dbNoMapping = new HashMap<>(dataSourceGroupMap.size());
         Map<String, Map<String, TableShardingConfig>> tableShardingConfigMap = new HashMap<>(dataSourceGroupMap.size());
 
         for (Map.Entry<String, DataSourceGroupConfig> entry : dataSourceGroupMap.entrySet()) {
@@ -179,34 +178,20 @@ public class KudosShardingAutoConfiguration {
                 if (Boolean.FALSE.equals(tableNameSet.add(tableName))) {
                     throw new IllegalArgumentException("table [" + tableName + "] in group [" + groupKey + " ] is configured more than once, please check your config");
                 }
-
             });
 
-            //            final Map<String, String> dbMapping = group.getDbMapping();
-            //            if (dbMapping == null || dbMapping.isEmpty()) {
-            //                throw new IllegalArgumentException("db mapping of [" + groupKey + "] is empty, please check your config");
-            //            }
-            //            dbMapping.forEach((dbNo, dbName) -> {
-            //                if (StringUtils.isEmpty(dbNo) || StringUtils.isEmpty(dbName)) {
-            //                    throw new IllegalArgumentException("db mapping of [" + groupKey + "] is empty, please check your config");
-            //                }
-            //                // if dbNo is not an umber, then throw exception
-            //                if (!org.apache.commons.lang3.StringUtils.isNumeric(dbNo)) {
-            //                    throw new IllegalArgumentException("db mapping of [" + groupKey + "], [" + dbNo + "] is not a number, please check your config");
-            //                }
-            //                if (dbNo.length() > 4) {
-            //                    throw new IllegalArgumentException("db mapping of [" + groupKey + "], [" + dbNo + "] is too long, you might don't need " + dbNo + " databases. check your config");
-            //                }
-            //                if (dbNo.length() < 4) {
-            //                    dbMapping.put(new DecimalFormat("0000").format(new BigDecimal(dbNo)), dbName);
-            //                    dbMapping.remove(dbNo);
-            //                }
-            //            });
-            // dbNoMapping.put(groupKey, dbMapping);
             tableShardingConfigMap.put(groupKey, shardingCfgMap);
         }
         return new ShardingInterceptor(tableShardingConfigMap);
     }
 
+    @Bean
+    public Cache<String, Object> caffeineCache() {
+        return Caffeine.newBuilder()
+                .expireAfterWrite(3, TimeUnit.HOURS)
+                .initialCapacity(64)
+                .maximumSize(512)
+                .build();
+    }
 
 }

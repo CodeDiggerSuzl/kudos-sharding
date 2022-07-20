@@ -2,17 +2,12 @@ package org.kudos.intercepter;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.ibatis.binding.MapperMethod;
 import org.apache.ibatis.cache.CacheKey;
 import org.apache.ibatis.executor.Executor;
 import org.apache.ibatis.executor.statement.StatementHandler;
 import org.apache.ibatis.mapping.BoundSql;
 import org.apache.ibatis.mapping.MappedStatement;
-import org.apache.ibatis.plugin.Interceptor;
-import org.apache.ibatis.plugin.Intercepts;
-import org.apache.ibatis.plugin.Invocation;
-import org.apache.ibatis.plugin.Plugin;
-import org.apache.ibatis.plugin.Signature;
+import org.apache.ibatis.plugin.*;
 import org.apache.ibatis.reflection.DefaultReflectorFactory;
 import org.apache.ibatis.reflection.MetaObject;
 import org.apache.ibatis.reflection.ReflectorFactory;
@@ -21,7 +16,6 @@ import org.apache.ibatis.session.ResultHandler;
 import org.apache.ibatis.session.RowBounds;
 import org.kudos.annotation.KudosSharding;
 import org.kudos.annotation.NoSharding;
-import org.kudos.config.RemoteConfigFetcher;
 import org.kudos.config.TableShardingConfig;
 import org.kudos.context.ShardingContextHolder;
 import org.kudos.sharding.ShardingResult;
@@ -52,27 +46,22 @@ import java.util.Properties;
         // SQL replacement
         @Signature(type = StatementHandler.class, method = "prepare", args = {Connection.class, Integer.class}),
         // sharding
-        @Signature(type = Executor.class, method = "query", args = {MappedStatement.class, Object.class, RowBounds.class, ResultHandler.class, CacheKey.class, BoundSql.class}),
-        @Signature(type = Executor.class, method = "query", args = {MappedStatement.class, Object.class, RowBounds.class, ResultHandler.class}),
-        @Signature(type = Executor.class, method = "update", args = {MappedStatement.class, Object.class})})
+        @Signature(type = Executor.class, method = "query", args = {MappedStatement.class, Object.class, RowBounds.class, ResultHandler.class, CacheKey.class, BoundSql.class}), @Signature(type = Executor.class, method = "query", args = {MappedStatement.class, Object.class, RowBounds.class, ResultHandler.class}), @Signature(type = Executor.class, method = "update", args = {MappedStatement.class, Object.class})})
 public class ShardingInterceptor implements Interceptor {
 
-    @Autowired
-    private RemoteConfigFetcher remoteConfigFetcher;
+    //    @Autowired
+    //    private RemoteConfigFetcher remoteConfigFetcher;
 
-    @Autowired
-    private KudosShardingHelper shardingHelper;
+    private static final ReflectorFactory REFLECTOR_FACTORY = new DefaultReflectorFactory();
     /**
      * table sharding config map key: datasource group, value: table sharding config(with sharding strategy, datasource
      * total, table total)
      */
     private Map<String, Map<String, TableShardingConfig>> tableShardingConfigMap;
-
     /**
      * db number and name mapping, cause the sharing result is a number, need the association of no and name mapping
      */
     private Map<String, Map<String, String>> dbNoMapping;
-
 
     public ShardingInterceptor() {
     }
@@ -80,8 +69,6 @@ public class ShardingInterceptor implements Interceptor {
     public ShardingInterceptor(final Map<String, Map<String, TableShardingConfig>> tableShardingConfigMap) {
         this.tableShardingConfigMap = tableShardingConfigMap;
     }
-
-    private static final ReflectorFactory REFLECTOR_FACTORY = new DefaultReflectorFactory();
 
     // local cache: key as the dao getStrategyName, and annotation config
     @Autowired
@@ -97,7 +84,7 @@ public class ShardingInterceptor implements Interceptor {
         // get annotation info.
         if (Executor.class.isAssignableFrom(targetClz)) {
             final MappedStatement mappedStatement = (MappedStatement) args[0];
-            final String fullMethodName = mappedStatement.getId(); // org.kudos.mapper.UserInfoDao.selectAll
+            final String fullMethodName = mappedStatement.getId();
             final int idx = fullMethodName.lastIndexOf(".");
             String interfaceName = fullMethodName.substring(0, idx);
             // local cache: key:interface getStrategyName value: sharding annotation config
@@ -112,7 +99,7 @@ public class ShardingInterceptor implements Interceptor {
             }
 
             final KudosSharding shardingConf = AnnotationUtils.findAnnotation(daoClazz, KudosSharding.class);
-            log.debug("sharding annotation config: {}", JsonUtils.toStr(shardingConf));
+            log.info("[kudos-sharding]:sharding annotation config: {}", JsonUtils.toStr(shardingConf));
             // // not marked with annotation
             if (shardingConf == null) {
                 ShardingContextHolder.setShardingFlag(false);
@@ -121,18 +108,21 @@ public class ShardingInterceptor implements Interceptor {
 
             // here is core sharding logic
             final String shardingKey = shardingConf.shardingKey();
+            log.info("[kudos-sharding]:[kudos-sharding]: got sharding key sharding key: {}", shardingKey);
             // get value of sharding key from args
             final Object arg = args[1];
-            final Object shardingValue = shardingHelper.getShardingKeyValue(shardingKey, arg, mappedStatement);
-            log.debug("sharding key: {}, sharding value: {}", shardingKey, shardingValue);
+            final Object shardingValue = KudosShardingHelper.getShardingKeyValue(shardingKey, arg, mappedStatement);
+            log.info("[kudos-sharding]:sharding key: {}, sharding value: {}", shardingKey, shardingValue);
             // sharding strategy for main table
             final Class<? extends ShardingStrategy> strategy = shardingConf.shardingStrategy(); // add cache TODO
 
             final String mainTableName = shardingConf.mainTableName();
             final String[] otherTableArr = shardingConf.otherTableNames();
 
-            final String dbGroupKey = remoteConfigFetcher.fetchCurrDatasourceGroupKey();
+            //final String dbGroupKey = remoteConfigFetcher.fetchCurrDatasourceGroupKey();
+            final String dbGroupKey = "default";
             final Map<String, TableShardingConfig> tableShardingConfigMap = this.tableShardingConfigMap.get(dbGroupKey);
+            log.info("[kudos-sharding]:table sharding config map: {}", JsonUtils.toStr(tableShardingConfigMap));
             final String connector = shardingConf.tableConnector();
 
 
@@ -148,12 +138,13 @@ public class ShardingInterceptor implements Interceptor {
                 }
                 final ShardingStrategy shardingStrategy = strategy.newInstance();
                 ShardingResult shardingResult = shardingStrategy.sharding(shardingValue, mainTableConfig.getDbCnt(), mainTableConfig.getTableCnt());
+                log.info("[kudos-sharding]:sharding result: {}", JsonUtils.toStr(shardingResult));
                 // set sharding result to context holder
                 ShardingContextHolder.setShardingResult(shardingResult);
                 final String tableNo = shardingResult.getTableNo();
                 final String tableNameWithNo = String.format("%s%s%s", mainTableName, connector, tableNo);
                 Map<String, String> tableNameMap = new HashMap<>(1);
-                tableNameMap.put(tableNo, tableNameWithNo);
+                tableNameMap.put(mainTableName, tableNameWithNo);
                 ShardingContextHolder.setTableNameMap(tableNameMap);
             }
         }
@@ -162,15 +153,20 @@ public class ShardingInterceptor implements Interceptor {
         if (StatementHandler.class.isAssignableFrom(targetClz)) {
             try {
                 // final Thread thread = Thread.currentThread();
-                if (Boolean.FALSE.equals(ShardingContextHolder.getShardingFlag())) {
+                final Boolean shardingFlag = ShardingContextHolder.getShardingFlag();
+                log.info("[kudos-sharding]:sharding flag: {}", shardingFlag);
+                if (Boolean.FALSE.equals(shardingFlag)) {
+                    log.info("[kudos-sharding]:not sharding, skip sql replacement");
                     // do nothing
                     return invocation.proceed();
                 }
                 final Map<String, String> tableMapping = ShardingContextHolder.getTableNameMap();
+                log.info("[kudos-sharding]:table mapping: {}", JsonUtils.toStr(tableMapping));
                 // get  sql
                 final MetaObject metaObject = MetaObject.forObject(target, SystemMetaObject.DEFAULT_OBJECT_FACTORY, SystemMetaObject.DEFAULT_OBJECT_WRAPPER_FACTORY, REFLECTOR_FACTORY);
                 final String sqlPropName = "delegate.boundSql.sql";
                 final String originalSql = (String) metaObject.getValue(sqlPropName);
+                log.info("[kudos-sharding]:original sql: {}", originalSql);
                 String replacedSql = originalSql;
                 for (Map.Entry<String, String> entry : tableMapping.entrySet()) {
                     final String originalTableName = entry.getKey();
@@ -180,7 +176,7 @@ public class ShardingInterceptor implements Interceptor {
                     replacedSql = originalSql.replaceAll(regex, afterTableName);
                 }
                 metaObject.setValue(sqlPropName, replacedSql);
-                System.out.println("replaced sql: " + replacedSql);
+                log.info("[kudos-sharding]:replaced sql: {}", replacedSql);
             } finally {
                 ShardingContextHolder.clearAllContexts();
             }

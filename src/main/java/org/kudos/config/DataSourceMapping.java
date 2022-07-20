@@ -6,6 +6,7 @@ import javax.sql.DataSource;
 import java.util.Map;
 
 /**
+ * Mapping sharding  config from yaml.
  *
  * @author suzl
  */
