@@ -99,16 +99,16 @@ public class ShardingInterceptor implements Interceptor {
             }
 
             final KudosSharding shardingConf = AnnotationUtils.findAnnotation(daoClazz, KudosSharding.class);
-            log.info("[kudos-sharding]:sharding annotation config: {}", JsonUtils.toStr(shardingConf));
             // // not marked with annotation
             if (shardingConf == null) {
                 ShardingContextHolder.setShardingFlag(false);
                 return invocation.proceed();
             }
+            log.info("[kudos-sharding]:sharding annotation config: {}", JsonUtils.toStr(shardingConf.toString()));
 
             // here is core sharding logic
             final String shardingKey = shardingConf.shardingKey();
-            log.info("[kudos-sharding]:[kudos-sharding]: got sharding key sharding key: {}", shardingKey);
+            log.debug("[kudos-sharding]:[kudos-sharding]: got sharding key sharding key: {}", shardingKey);
             // get value of sharding key from args
             final Object arg = args[1];
             final Object shardingValue = KudosShardingHelper.getShardingKeyValue(shardingKey, arg, mappedStatement);
@@ -138,7 +138,7 @@ public class ShardingInterceptor implements Interceptor {
                 }
                 final ShardingStrategy shardingStrategy = strategy.newInstance();
                 ShardingResult shardingResult = shardingStrategy.sharding(shardingValue, mainTableConfig.getDbCnt(), mainTableConfig.getTableCnt());
-                log.info("[kudos-sharding]:sharding value : {} sharding result: {}", JsonUtils.toStr(shardingResult));
+                log.info("[kudos-sharding]:sharding value : {} sharding result: {}", shardingValue, JsonUtils.toStr(shardingResult));
                 // set sharding result to context holder
                 ShardingContextHolder.setShardingResult(shardingResult);
                 final String tableNo = shardingResult.getTableNo();
