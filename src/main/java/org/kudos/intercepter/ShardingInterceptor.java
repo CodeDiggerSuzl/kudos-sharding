@@ -138,7 +138,7 @@ public class ShardingInterceptor implements Interceptor {
                 }
                 final ShardingStrategy shardingStrategy = strategy.newInstance();
                 ShardingResult shardingResult = shardingStrategy.sharding(shardingValue, mainTableConfig.getDbCnt(), mainTableConfig.getTableCnt());
-                log.info("[kudos-sharding]:sharding result: {}", JsonUtils.toStr(shardingResult));
+                log.info("[kudos-sharding]:sharding value : {} sharding result: {}", JsonUtils.toStr(shardingResult));
                 // set sharding result to context holder
                 ShardingContextHolder.setShardingResult(shardingResult);
                 final String tableNo = shardingResult.getTableNo();
@@ -161,12 +161,12 @@ public class ShardingInterceptor implements Interceptor {
                     return invocation.proceed();
                 }
                 final Map<String, String> tableMapping = ShardingContextHolder.getTableNameMap();
-                log.info("[kudos-sharding]:table mapping: {}", JsonUtils.toStr(tableMapping));
+                log.debug("[kudos-sharding]:table mapping: {}", JsonUtils.toStr(tableMapping));
                 // get  sql
                 final MetaObject metaObject = MetaObject.forObject(target, SystemMetaObject.DEFAULT_OBJECT_FACTORY, SystemMetaObject.DEFAULT_OBJECT_WRAPPER_FACTORY, REFLECTOR_FACTORY);
                 final String sqlPropName = "delegate.boundSql.sql";
                 final String originalSql = (String) metaObject.getValue(sqlPropName);
-                log.info("[kudos-sharding]:original sql: {}", originalSql);
+                log.debug("[kudos-sharding]:original sql: {}", originalSql);
                 String replacedSql = originalSql;
                 for (Map.Entry<String, String> entry : tableMapping.entrySet()) {
                     final String originalTableName = entry.getKey();
@@ -176,7 +176,7 @@ public class ShardingInterceptor implements Interceptor {
                     replacedSql = originalSql.replaceAll(regex, afterTableName);
                 }
                 metaObject.setValue(sqlPropName, replacedSql);
-                log.info("[kudos-sharding]:replaced sql: {}", replacedSql);
+                log.debug("[kudos-sharding]:replaced sql: {}", replacedSql);
             } finally {
                 ShardingContextHolder.clearAllContexts();
             }

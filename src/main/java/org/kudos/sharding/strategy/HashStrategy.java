@@ -22,10 +22,11 @@ public class HashStrategy implements ShardingStrategy {
      */
     @Override
     public ShardingResult sharding(Object value, int datasourceCnt, int tableTotalCnt) {
-        int hash = Math.abs(value.toString().hashCode());
+        final String val = value.toString();
+        int hash = val.hashCode() < 0 ? Math.abs(val.hashCode()) : val.hashCode();
         final int eachDbTableCnt = tableTotalCnt / datasourceCnt;
-        int dsNo = hash % datasourceCnt;
-        int tableNo = (hash % eachDbTableCnt) + (dsNo * eachDbTableCnt);
+        final int tableNo = hash % tableTotalCnt;
+        final int dsNo = tableNo / eachDbTableCnt;
         String dataSourceNum = String.format("%04d", dsNo);
         String tableNum = String.format("%04d", tableNo);
         return new ShardingResult(dataSourceNum, tableNum);
