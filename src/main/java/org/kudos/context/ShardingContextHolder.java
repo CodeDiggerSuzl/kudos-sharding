@@ -2,7 +2,6 @@ package org.kudos.context;
 
 import lombok.extern.slf4j.Slf4j;
 import org.kudos.sharding.ShardingResult;
-import org.kudos.utils.JsonUtils;
 
 import java.util.Map;
 
@@ -34,7 +33,6 @@ public class ShardingContextHolder {
     private static final ThreadLocal<Map<String, String>> TABLE_NAME_MAP_CTX = new ThreadLocal<>();
 
     public static void setTableNameMap(Map<String, String> tableNameMap) {
-        log.debug("set table name map: {}", JsonUtils.toStr(tableNameMap));
         TABLE_NAME_MAP_CTX.set(tableNameMap);
     }
 

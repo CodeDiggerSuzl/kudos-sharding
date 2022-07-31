@@ -3,8 +3,10 @@ package org.kudos;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.logging.log4j.util.Strings;
 import org.kudos.config.DataSourceMapping;
+import org.kudos.config.RemoteConfigFetcher;
 import org.kudos.context.ShardingContextHolder;
 import org.kudos.sharding.ShardingResult;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.datasource.lookup.AbstractRoutingDataSource;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
@@ -29,6 +31,9 @@ public class KudosDynamicDataSource extends AbstractRoutingDataSource {
     public KudosDynamicDataSource() {
     }
 
+    @Autowired
+    private RemoteConfigFetcher remoteConfigFetcher;
+
     private Map<String, DataSourceMapping> dataSourceGroupMappingMap;
     private String defaultDataGroupKey;
 
@@ -40,8 +45,8 @@ public class KudosDynamicDataSource extends AbstractRoutingDataSource {
 
     @Override
     protected Object determineCurrentLookupKey() {
-        // String dataSourceGroupKey = remoteConfigFetcher.fetchCurrDatasourceGroupKey();
-        String dataSourceGroupKey = "default";
+        String dataSourceGroupKey = remoteConfigFetcher.fetchCurrDatasourceGroupKey();
+        //        String dataSourceGroupKey = "default";
         log.info("determine curr look up key, got dataSource group key = {}", dataSourceGroupKey);
         if (StringUtils.isEmpty(dataSourceGroupKey)) {
             log.info("got nothing from data source group key, use default group key instead");

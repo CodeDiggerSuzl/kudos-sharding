@@ -7,6 +7,9 @@ import org.apache.ibatis.mapping.MappedStatement;
 import java.lang.reflect.Field;
 import java.util.Map;
 
+/**
+ * @author suzl
+ */
 @SuppressWarnings({"rawtypes", "unchecked"})
 public class KudosShardingHelper {
 

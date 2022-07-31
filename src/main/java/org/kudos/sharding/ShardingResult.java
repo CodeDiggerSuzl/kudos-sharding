@@ -14,7 +14,12 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class ShardingResult {
 
+    /**
+     * the no of database
+     */
     private String dataSourceNo;
-
+    /**
+     * the no of table
+     */
     private String tableNo;
 }

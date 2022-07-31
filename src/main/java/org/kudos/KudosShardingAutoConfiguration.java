@@ -185,13 +185,18 @@ public class KudosShardingAutoConfiguration {
         return new ShardingInterceptor(tableShardingConfigMap);
     }
 
-    @Bean
+    @Bean(name = "kudosCaffeineCache")
     public Cache<String, Object> caffeineCache() {
         return Caffeine.newBuilder()
                 .expireAfterWrite(3, TimeUnit.HOURS)
                 .initialCapacity(64)
                 .maximumSize(512)
                 .build();
+    }
+
+    @Bean(name = "kudosRemoteConfigFetcher")
+    public RemoteConfigFetcher remoteConfigFetcher() {
+        return new RemoteConfigFetcher();
     }
 
 }

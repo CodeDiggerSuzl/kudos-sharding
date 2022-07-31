@@ -11,6 +11,7 @@
 - [x] Improve core sharding logic, make it ok.
     - [x] dynamic datasource is ok. _2022/07/21_
     - [x] interceptor is ok. _2022/07/21_
+- [x] Get remote data group from config center,temp store in redis. _2022/07/31_
 - [ ] Judge all type of parameter in mapper interface. half done. need to check.
 - [ ] Decide sharding logic for specific cases.
 - [ ] A table doesn't need to be sharded, but previous table was sharded.

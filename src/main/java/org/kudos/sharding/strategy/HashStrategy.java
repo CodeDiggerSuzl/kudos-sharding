@@ -22,8 +22,7 @@ public class HashStrategy implements ShardingStrategy {
      */
     @Override
     public ShardingResult sharding(Object value, int datasourceCnt, int tableTotalCnt) {
-        final String val = value.toString();
-        int hash = val.hashCode() < 0 ? Math.abs(val.hashCode()) : val.hashCode();
+        int hash = getHashCode(value);
         final int eachDbTableCnt = tableTotalCnt / datasourceCnt;
         final int tableNo = hash % tableTotalCnt;
         final int dsNo = tableNo / eachDbTableCnt;
@@ -37,5 +36,17 @@ public class HashStrategy implements ShardingStrategy {
         return ShardingStrategyType.hash.name();
     }
 
+    private int getHashCode(Object value) {
+        int hash;
+        if (value instanceof Integer // for better hash result
+                || value instanceof Long
+                || value instanceof Short
+                || value instanceof Byte) {
+            hash = value.hashCode();
+        } else {
+            hash = value.toString().hashCode();
+        }
+        return hash < 0 ? Math.abs(hash) : hash;
+    }
 
 }

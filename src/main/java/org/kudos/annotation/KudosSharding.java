@@ -23,20 +23,6 @@ public @interface KudosSharding {
     String mainTableName();
 
     /**
-     * Other table names of this sharding, without main table.
-     * <p>
-     * If other table names is empty, the main table is the only table of this sharding.
-     * <p>
-     * Main table will use the shardingStrategy in the annotation and the other tables will use the config in config files.
-     * <b>
-     * <p>
-     * All table names after sharding their data source must be the same. the business caller has to guarantee that.
-     * </b>
-     */
-    String[] otherTableNames() default {}; // other table names, using for join table.
-
-
-    /**
      * sharding property. not null.
      */
     String shardingKey();
@@ -51,8 +37,22 @@ public @interface KudosSharding {
      */
     String tableConnector() default "_";
 
-    SpecificConfig[] specificShardingConfig() default {};
+    /**
+     * Other table names of this sharding, without main table.
+     * <p>
+     * If other table names is empty, the main table is the only table of this sharding.
+     * <p>
+     * Main table will use the shardingStrategy in the annotation and the other tables will use the config in config files.
+     * <b>
+     * <p>
+     * All table names after sharding their data source must be the same. the business caller has to guarantee that.
+     * </b>
+     */
+    ShardingConfig[] otherTableShardingConfig() default {}; // other table names, using for join table.
 
-    DateConfig dataShardingConfig() default @DateConfig;
+    /**
+     * sharding config for date sharding.
+     */
+    DateConfig dateShardingConfig() default @DateConfig;
 
 }
