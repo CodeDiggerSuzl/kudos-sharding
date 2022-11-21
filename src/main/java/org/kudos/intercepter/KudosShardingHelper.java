@@ -43,7 +43,7 @@ public class KudosShardingHelper {
         // single parameter in the mapper interface
         else {
             // if the parameter is a base type and not marked by @Param.
-            if (currTypeIsBasic(arg)) {
+            if (currTypeBeingBasic(arg)) {
                 throw new RuntimeException(String.format("Please use @Param to mark the sharding key:[%s]", key));
             }
 
@@ -65,7 +65,7 @@ public class KudosShardingHelper {
      * @param object arg
      * @return true or false
      */
-    private static boolean currTypeIsBasic(Object object) {
+    private static boolean currTypeBeingBasic(Object object) {
         return object.getClass().isPrimitive()
                 || object instanceof String
                 || object instanceof Integer

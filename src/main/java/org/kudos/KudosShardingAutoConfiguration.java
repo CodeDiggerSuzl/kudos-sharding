@@ -16,6 +16,8 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
+import org.springframework.jdbc.datasource.LazyConnectionDataSourceProxy;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.util.StringUtils;
 
 import javax.sql.DataSource;
@@ -39,6 +41,20 @@ import java.util.concurrent.TimeUnit;
 public class KudosShardingAutoConfiguration {
 
     private static final int DATASOURCE_GROUP_NAME_SIZE = 4;
+
+    @Bean(name = "kudosRemoteConfigFetcher")
+    public RemoteConfigFetcher remoteConfigFetcher() {
+        return new RemoteConfigFetcher();
+    }
+
+    @Bean(name = "kudosCaffeineCache")
+    public Cache<String, Object> caffeineCache() {
+        return Caffeine.newBuilder()
+                .expireAfterWrite(3, TimeUnit.HOURS)
+                .initialCapacity(64)
+                .maximumSize(512)
+                .build();
+    }
 
     @Bean
     @ConditionalOnMissingBean
@@ -71,7 +87,6 @@ public class KudosShardingAutoConfiguration {
         if (defaultDataSourceGroup == null) {
             throw new IllegalArgumentException("default data source group is not found, please check your config");
         }
-
 
         Map<String, DataSourceMapping> dsgMappingMap = new HashMap<>(16);
 
@@ -140,8 +155,13 @@ public class KudosShardingAutoConfiguration {
             dsMapping.setDbNumberMapping(mapCpy);
             dsgMappingMap.put(groupKey, dsMapping);
         }
-
-        return new KudosDynamicDataSource(dsgMappingMap, property.getDefaultDataSourceGroup());
+        KudosDynamicDataSource dynamicDataSource = new KudosDynamicDataSource(dsgMappingMap, property.getDefaultDataSourceGroup());
+        LazyConnectionDataSourceProxy lazyDsProxy = new LazyConnectionDataSourceProxy();
+        lazyDsProxy.setTargetDataSource(dynamicDataSource);
+        lazyDsProxy.setDefaultAutoCommit(false);
+        lazyDsProxy.setDefaultTransactionIsolation(TransactionDefinition.ISOLATION_REPEATABLE_READ);
+        System.out.println("kudosDynamicDataSource bean method ends..");
+        return dynamicDataSource;
     }
 
 
@@ -183,20 +203,6 @@ public class KudosShardingAutoConfiguration {
             tableShardingConfigMap.put(groupKey, shardingCfgMap);
         }
         return new ShardingInterceptor(tableShardingConfigMap);
-    }
-
-    @Bean(name = "kudosCaffeineCache")
-    public Cache<String, Object> caffeineCache() {
-        return Caffeine.newBuilder()
-                .expireAfterWrite(3, TimeUnit.HOURS)
-                .initialCapacity(64)
-                .maximumSize(512)
-                .build();
-    }
-
-    @Bean(name = "kudosRemoteConfigFetcher")
-    public RemoteConfigFetcher remoteConfigFetcher() {
-        return new RemoteConfigFetcher();
     }
 
 }

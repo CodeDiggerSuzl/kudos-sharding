@@ -4,9 +4,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.logging.log4j.util.Strings;
 import org.kudos.config.DataSourceMapping;
 import org.kudos.config.RemoteConfigFetcher;
+import org.kudos.consts.KudosConst;
 import org.kudos.context.ShardingContextHolder;
 import org.kudos.sharding.ShardingResult;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jdbc.datasource.lookup.AbstractRoutingDataSource;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
@@ -26,12 +28,11 @@ import java.util.Map;
 @Slf4j
 public class KudosDynamicDataSource extends AbstractRoutingDataSource {
 
-    private static final String SEPARATOR = "_:_";
-
     public KudosDynamicDataSource() {
     }
 
     @Autowired
+    @Qualifier("kudosRemoteConfigFetcher")
     private RemoteConfigFetcher remoteConfigFetcher;
 
     private Map<String, DataSourceMapping> dataSourceGroupMappingMap;
@@ -40,13 +41,13 @@ public class KudosDynamicDataSource extends AbstractRoutingDataSource {
     public KudosDynamicDataSource(Map<String, DataSourceMapping> dataSourceGroupMappingMap, String defaultDataGroupKey) {
         this.dataSourceGroupMappingMap = dataSourceGroupMappingMap;
         this.defaultDataGroupKey = defaultDataGroupKey;
+        System.out.println("KudosDynamicDataSource 构造方法 ends");
     }
-
 
     @Override
     protected Object determineCurrentLookupKey() {
         String dataSourceGroupKey = remoteConfigFetcher.fetchCurrDatasourceGroupKey();
-        //        String dataSourceGroupKey = "default";
+        //  String dataSourceGroupKey = "default";
         log.info("determine curr look up key, got dataSource group key = {}", dataSourceGroupKey);
         if (StringUtils.isEmpty(dataSourceGroupKey)) {
             log.info("got nothing from data source group key, use default group key instead");
@@ -94,7 +95,7 @@ public class KudosDynamicDataSource extends AbstractRoutingDataSource {
      * @return look up key
      */
     private String getLookupKey(String dsGroupKey, String dataSourceName) {
-        final String lookupKey = String.format("%s%s%s", dsGroupKey, SEPARATOR, dataSourceName);
+        final String lookupKey = String.format("%s%s%s", dsGroupKey, KudosConst.SEPARATOR, dataSourceName);
         log.info("get lookup key = {}", lookupKey);
         return lookupKey;
     }
@@ -129,5 +130,6 @@ public class KudosDynamicDataSource extends AbstractRoutingDataSource {
         final Object defaultTargetDataSource = targetDataSourceMap.get(getLookupKey(datasourceGroupKey, defaultDataSourceName));
         super.setDefaultTargetDataSource(defaultTargetDataSource);
         super.afterPropertiesSet();
+        System.out.println("KudosDynamicDataSource afterPropertiesSet ends");
     }
 }

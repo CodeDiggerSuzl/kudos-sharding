@@ -7,7 +7,7 @@
     <groupId>org.kudos</groupId>
     <artifactId>kudos-sharding-spring-boot-starter</artifactId>
     <packaging>jar</packaging>
-    <version>0.0.1-SNAPSHOT</version>
+    <version>0.0.2-SNAPSHOT</version>
     <name>kudos-sharding</name>
     <description>a database sharding starter for spring-boot.</description>
 
@@ -24,7 +24,7 @@
             <version>2.6.3</version>
             <optional>true</optional>
         </dependency>
-        <!--        TODO del redis dependency later-->
+
         <dependency>
             <groupId>redis.clients</groupId>
             <artifactId>jedis</artifactId>
